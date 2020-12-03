@@ -27,14 +27,8 @@ int main(int argc,char* argv[]){
   std::string in_path = argv[2];
   std::string out_path = argv[3];
 
-  std::string cut_out_scale;
-  if( root.isMember("output_options") ){
-    cut_out_scale = root["output_options"]["cut_outs"]["scale"].asString();
-  } else {
-    cut_out_scale = "mag";
-  }
 
-  
+
   // Loop over the instruments
   // ===================================================================================================================
   // ===================================================================================================================
@@ -99,10 +93,8 @@ int main(int argc,char* argv[]){
       mycam.noise->addNoise(&obs_base);
       
       // Convert to magnitudes
-      if( cut_out_scale == "mag" ){
-	for(int i=0;i<obs_base.Nm;i++){
-	  obs_base.img[i] = -2.5*log10(obs_base.img[i]);
-	}
+      for(int i=0;i<obs_base.Nm;i++){
+	obs_base.img[i] = -2.5*log10(obs_base.img[i]);
       }
 
       // Output the observed base image
@@ -117,16 +109,18 @@ int main(int argc,char* argv[]){
       fin >> images;
       fin.close();
 
+      // ALBA Modification
+      for(i = 0; i < 15000; ++i){
       
-      // Get maximum image time delay
-      double td_max = 0.0;
-      for(int q=0;q<images.size();q++){
-	double td = images[q]["dt"].asDouble();
-	if( td > td_max ){
-	  td_max = td;
+	// Get maximum image time delay
+	double td_max = 0.0;
+	for(int q=0;q<images.size();q++){
+	  double td = images[q]["dt"].asDouble();
+	  if( td > td_max ){
+	    td_max = td;
+	  }
 	}
-      }
-
+	
       
 
 
@@ -334,11 +328,13 @@ int main(int argc,char* argv[]){
 	  for(int q=0;q<images.size();q++){
 	    double macro_mag = abs(images[q]["mag"].asDouble());
 	    LightCurve* cont_LC_intrinsic = new LightCurve(tcont);
+	    // ALBA: look here
 	    LC_intrinsic[lc_in]->interpolate(cont_LC_intrinsic,td_max - images[q]["dt"].asDouble());
 
 	    if( unmicro ){
 	      // === Combining three signals: intrinsic, intrinsic unmicrolensed, and extrinsic
 	      LightCurve* cont_LC_unmicro = new LightCurve(tcont);
+	      // ALBA: look here
 	      LC_unmicro[lc_in]->interpolate(cont_LC_unmicro,td_max - images[q]["dt"].asDouble());
 	      
 	      if( LC_extrinsic[q][lc_ex]->time.size() > 0 ){ // Check if multiple image does not have a corresponding extrinsic light curve (i.e. a maximum image without a magnification map)
@@ -428,9 +424,17 @@ int main(int argc,char* argv[]){
 	  }
 	  
 	  // Write json light curves
+	  // ALBA: change here if you want to change output format: look in combined_light/src/auxiliary_functions.cpp
+	  // in combined_light/inc/auxiliary_functions.hpp we should include our header
 	  outputLightCurvesJson(samp_LC,out_path+mock+"/"+instrument_name+"_LC_sampled.json");
-	  // *********************** End of product **************************************************
+	  // samp_LC vector pointers to lc objects -> look at auxiliary_functions.hpp
+	} // end of loop on 15k curves
 
+
+	// td_max and images[q]["dt"] are the only things we should touch
+	
+	
+	// *********************** End of product **************************************************
 
 
 
@@ -484,10 +488,8 @@ int main(int argc,char* argv[]){
 	      
 	      
 	      // Finalize output (e.g convert to magnitudes) and write
-	      if( cut_out_scale == "mag" ){
-		for(int i=0;i<obs_img.Nm;i++){
-		  obs_img.img[i] = -2.5*log10(obs_img.img[i]);
-		}
+	      for(int i=0;i<obs_img.Nm;i++){
+		obs_img.img[i] = -2.5*log10(obs_img.img[i]);
 	      }
 	      char buf[4];
 	      sprintf(buf,"%03d",t);
