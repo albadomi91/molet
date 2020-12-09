@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <random>
 
 #include "json/json.h"
 
@@ -27,7 +28,7 @@ int main(int argc,char* argv[]){
   std::string in_path = argv[2];
   std::string out_path = argv[3];
 
-
+  std::cout << "POINT 1\n";
 
   // Loop over the instruments
   // ===================================================================================================================
@@ -52,6 +53,7 @@ int main(int argc,char* argv[]){
     mycam.cropPSF(0.99);
     mycam.createKernel(mysim.Ni,mysim.Nj);
     
+    std::cout << "POINT 2\n";
     
     // Create the fixed extended lensed light
     ImagePlane* extended = new ImagePlane(out_path+"output/lensed_image_super.fits",super_res_x,super_res_y,width,height);
@@ -109,12 +111,31 @@ int main(int argc,char* argv[]){
       fin >> images;
       fin.close();
 
+      std::cout << "POINT 3\n";
+
+
       // ALBA Modification
-      for(i = 0; i < 15000; ++i){
-      
+      for(int i = 0; i < 2; ++i){
+
+	double lower_bound = 1;
+	double upper_bound = 100;
+	std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
+	std::default_random_engine re;
+	
+	for(int q=0;q<images.size();q++){
+
+	  double a_random_double = unif(re);
+
+	  std::cout << "random time delay " << a_random_double << std::endl;
+
+	  images[q]["dt"] = a_random_double;
+	  
+	} 
+	
 	// Get maximum image time delay
 	double td_max = 0.0;
 	for(int q=0;q<images.size();q++){
+	  //	  double td = images[q]["dt"].asDouble();
 	  double td = images[q]["dt"].asDouble();
 	  if( td > td_max ){
 	    td_max = td;
@@ -122,8 +143,6 @@ int main(int argc,char* argv[]){
 	}
 	
       
-
-
       // Get observed time vector
       std::vector<double> tobs;
       for(int t=0;t<instrument["time"].size();t++){
@@ -367,7 +386,7 @@ int main(int argc,char* argv[]){
 	  }
 
 	  // Write json light curves
-	  outputLightCurvesJson(cont_LC,out_path+mock+"/"+instrument_name+"_LC_continuous.json");
+	  outputLightCurvesJson(cont_LC,out_path+mock+"/"+instrument_name+"_LC_continuous" + std::to_string(i) + ".json");
 
 	  // Clean up
 	  for(int q=0;q<images.size();q++){
@@ -428,7 +447,7 @@ int main(int argc,char* argv[]){
 	  // in combined_light/inc/auxiliary_functions.hpp we should include our header
 	  outputLightCurvesJson(samp_LC,out_path+mock+"/"+instrument_name+"_LC_sampled.json");
 	  // samp_LC vector pointers to lc objects -> look at auxiliary_functions.hpp
-	} // end of loop on 15k curves
+	  //	} // end of loop on 15k curves
 
 
 	// td_max and images[q]["dt"] are the only things we should touch
@@ -529,8 +548,9 @@ int main(int argc,char* argv[]){
       }
 
     }
-    //================= END:CREATE THE TIME VARYING LIGHT ====================
-      
+      //================= END:CREATE THE TIME VARYING LIGHT ====================
+    
+    } // end of loop on 15k curves
 
 
   }
