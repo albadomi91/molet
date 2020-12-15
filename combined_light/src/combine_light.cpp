@@ -309,6 +309,7 @@ int main(int argc,char* argv[]){
       
       
       
+      std::srand(123);
       
       // Loop over intrinsic light curves
       //0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=0=
@@ -325,57 +326,86 @@ int main(int argc,char* argv[]){
 
 
 	  // *********************** Product: Observed continuous light curves ***********************
-	  std::vector<LightCurve*> cont_LC(images.size());
-	  for(int q=0;q<images.size();q++){
-	    cont_LC[q] = new LightCurve(tcont);
-	  }
+	  for(int itd=0;itd<3;itd++){
 
-	  // Calculate the combined light curve for each image
-	  for(int q=0;q<images.size();q++){
-	    double macro_mag = abs(images[q]["mag"].asDouble());
-	    LightCurve* cont_LC_intrinsic = new LightCurve(tcont);
-	    LC_intrinsic[lc_in]->interpolate(cont_LC_intrinsic,td_max - images[q]["dt"].asDouble());
 
-	    if( unmicro ){
-	      // === Combining three signals: intrinsic, intrinsic unmicrolensed, and extrinsic
-	      LightCurve* cont_LC_unmicro = new LightCurve(tcont);
-	      LC_unmicro[lc_in]->interpolate(cont_LC_unmicro,td_max - images[q]["dt"].asDouble());
-	      
-	      if( LC_extrinsic[q][lc_ex]->time.size() > 0 ){ // Check if multiple image does not have a corresponding extrinsic light curve (i.e. a maximum image without a magnification map)
-		LC_extrinsic[q][lc_ex]->interpolate(cont_LC[q],0.0);
-		for(int t=0;t<tcont.size();t++){
-		  cont_LC[q]->signal[t] = macro_mag*(cont_LC[q]->signal[t]*cont_LC_intrinsic->signal[t] + cont_LC_unmicro->signal[t]);
-		}
-	      } else {
-		for(int t=0;t<tcont.size();t++){
-		  cont_LC[q]->signal[t] = macro_mag*(cont_LC_intrinsic->signal[t] + cont_LC_unmicro->signal[t]); // this line includes only the intrinsic signal and excludes microlensing
-		}
-	      }
-
-	      delete(cont_LC_unmicro);
-	    } else {
-	      // === Combining two signals: intrinsic and extrinsic
-	      if( LC_extrinsic[q][lc_ex]->time.size() > 0 ){ // Check if multiple image does not have a corresponding extrinsic light curve (i.e. a maximum image without a magnification map)
-		LC_extrinsic[q][lc_ex]->interpolate(cont_LC[q],0.0);
-		for(int t=0;t<tcont.size();t++){
-		  cont_LC[q]->signal[t] = cont_LC[q]->signal[t] * macro_mag * cont_LC_intrinsic->signal[t];
-		}
-	      } else {
-		for(int t=0;t<tcont.size();t++){
-		  cont_LC[q]->signal[t] = macro_mag * cont_LC_intrinsic->signal[t]; // this line includes only the intrinsic signal and excludes microlensing
-		}
+	    // redefine time delays and td_max
+	    Json::Value mod_images = images;
+	    for(int q=0;q<images.size();q++){
+	      mod_images[q]["dt"] = images[q]["dt"].asDouble() + std::rand() % 20 + 1;
+	    }
+	    // Get maximum image time delay
+	    td_max = 0.0;
+	    for(int q=0;q<mod_images.size();q++){
+	      double td = mod_images[q]["dt"].asDouble();
+	      if( td > td_max ){
+		td_max = td;
 	      }
 	    }
+	    // File name specifier
+	    char tmp_buffer[4];
+	    sprintf(tmp_buffer,"%03d",itd);
+	    std::string file_spec = tmp_buffer;
+	    
 
-	    delete(cont_LC_intrinsic);
-	  }
 
-	  // Write json light curves
-	  outputLightCurvesJson(cont_LC,out_path+mock+"/"+instrument_name+"_LC_continuous.json");
 
-	  // Clean up
-	  for(int q=0;q<images.size();q++){
-	    delete(cont_LC[q]);
+
+	    
+	    std::vector<LightCurve*> cont_LC(mod_images.size());
+	    for(int q=0;q<mod_images.size();q++){
+	      cont_LC[q] = new LightCurve(tcont);
+	    }
+	    
+	    // Calculate the combined light curve for each image
+	    for(int q=0;q<mod_images.size();q++){
+	      double macro_mag = abs(mod_images[q]["mag"].asDouble());
+	      LightCurve* cont_LC_intrinsic = new LightCurve(tcont);
+	      LC_intrinsic[lc_in]->interpolate(cont_LC_intrinsic,td_max - mod_images[q]["dt"].asDouble());
+	      
+	      if( unmicro ){
+		// === Combining three signals: intrinsic, intrinsic unmicrolensed, and extrinsic
+		LightCurve* cont_LC_unmicro = new LightCurve(tcont);
+		LC_unmicro[lc_in]->interpolate(cont_LC_unmicro,td_max - mod_images[q]["dt"].asDouble());
+		
+		if( LC_extrinsic[q][lc_ex]->time.size() > 0 ){ // Check if multiple image does not have a corresponding extrinsic light curve (i.e. a maximum image without a magnification map)
+		  LC_extrinsic[q][lc_ex]->interpolate(cont_LC[q],0.0);
+		  for(int t=0;t<tcont.size();t++){
+		    cont_LC[q]->signal[t] = macro_mag*(cont_LC[q]->signal[t]*cont_LC_intrinsic->signal[t] + cont_LC_unmicro->signal[t]);
+		  }
+		} else {
+		  for(int t=0;t<tcont.size();t++){
+		    cont_LC[q]->signal[t] = macro_mag*(cont_LC_intrinsic->signal[t] + cont_LC_unmicro->signal[t]); // this line includes only the intrinsic signal and excludes microlensing
+		  }
+		}
+		
+		delete(cont_LC_unmicro);
+	      } else {
+		// === Combining two signals: intrinsic and extrinsic
+		if( LC_extrinsic[q][lc_ex]->time.size() > 0 ){ // Check if multiple image does not have a corresponding extrinsic light curve (i.e. a maximum image without a magnification map)
+		  LC_extrinsic[q][lc_ex]->interpolate(cont_LC[q],0.0);
+		  for(int t=0;t<tcont.size();t++){
+		    cont_LC[q]->signal[t] = cont_LC[q]->signal[t] * macro_mag * cont_LC_intrinsic->signal[t];
+		  }
+		} else {
+		  for(int t=0;t<tcont.size();t++){
+		    cont_LC[q]->signal[t] = macro_mag * cont_LC_intrinsic->signal[t]; // this line includes only the intrinsic signal and excludes microlensing
+		  }
+		}
+	      }
+	      
+	      delete(cont_LC_intrinsic);
+	    }
+	    
+	    // Write json light curves
+	    outputLightCurvesJson(cont_LC,out_path+mock+"/"+instrument_name+"_"+file_spec+"_LC_continuous.json");
+	    
+	    // Clean up
+	    for(int q=0;q<images.size();q++){
+	      delete(cont_LC[q]);
+	    }
+
+
 	  }
 	  // *********************** End of product **************************************************
 
