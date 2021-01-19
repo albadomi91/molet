@@ -2,6 +2,9 @@
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <random>
+#include <chrono>
+#include <time.h>
 
 #include "json/json.h"
 
@@ -14,6 +17,14 @@
 
 int main(int argc,char* argv[]){
 
+  std::mt19937 random_generator;
+  std::uniform_real_distribution<double> random_dist(0, 1);
+
+  auto random_seed = time(NULL);
+  random_generator.seed(random_seed);
+
+  double deltat_min = 0, deltat_max = 30;
+  
   //=============== BEGIN:PARSE INPUT =======================
   std::ifstream fin;
   Json::Value::Members jmembers;
@@ -316,13 +327,15 @@ int main(int argc,char* argv[]){
 	  //std::cout << mock << std::endl;
 
 	  // *********************** Product: Observed continuous light curves ***********************
-	  for(int itd=0;itd<3;itd++){
-
+	  for(int itd=0;itd<1;itd++){
 
 	    // redefine time delays and td_max
 	    Json::Value mod_images = images;
 	    for(int q=0;q<images.size();q++){
-	      mod_images[q]["dt"] = images[q]["dt"].asDouble() + std::rand() % 20 + 1;
+	      //	      mod_images[q]["dt"] = images[q]["dt"].asDouble() + std::rand() % 20 + 1;
+
+	      mod_images[q]["dt"] = deltat_min + (deltat_max - deltat_min)*random_dist(random_generator);
+
 	    }
 	    // Get maximum image time delay
 	    td_max = 0.0;
@@ -332,21 +345,29 @@ int main(int argc,char* argv[]){
 		td_max = td;
 	      }
 	    }
+	    
 	    // File name specifier
 	    char tmp_buffer[4];
 	    sprintf(tmp_buffer,"%03d",itd);
 	    std::string file_spec = tmp_buffer;
 	    
-
-
-
-
+	    //ALBA
+	    std::ofstream myfile;
+	    myfile.open (out_path+mock+"/time_delays.txt");
 	    
 	    std::vector<LightCurve*> cont_LC(mod_images.size());
 	    for(int q=0;q<mod_images.size();q++){
+
 	      cont_LC[q] = new LightCurve(tcont);
+
+	      double td = mod_images[q]["dt"].asDouble();
+	      
+	      myfile << td_max - td << std::endl;
+		      
 	    }
-	    
+
+	    myfile.close();
+
 	    // Calculate the combined light curve for each image
 	    for(int q=0;q<mod_images.size();q++){
 	      double macro_mag = abs(mod_images[q]["mag"].asDouble());
@@ -389,6 +410,8 @@ int main(int argc,char* argv[]){
 	    
 	    // Write json light curves
 	    outputLightCurvesJson(cont_LC,out_path+mock+"/"+instrument_name+"_"+file_spec+"_LC_continuous.json");
+
+	    
 	    
 	    // Clean up
 	    for(int q=0;q<images.size();q++){
@@ -396,7 +419,7 @@ int main(int argc,char* argv[]){
 	    }
 
 
-	  }
+	  }// time delay part
 	  // *********************** End of product **************************************************
 
 
