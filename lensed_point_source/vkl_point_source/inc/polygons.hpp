@@ -3,7 +3,7 @@
 
 #include <vector>
 
-class ImagePlane;
+class RectGrid;
 class CollectionMassModels;
 
 struct point {
@@ -18,14 +18,17 @@ struct triangle {
 };
 
 struct itriangle {
-  int ia;
-  int ib;
-  int ic;
+  int xa;
+  int xb;
+  int xc;
+  int ya;
+  int yb;
+  int yc;
 };
 
 
-std::vector<triangle> imagePlaneToTriangles(ImagePlane* image);
-std::vector<itriangle> imagePlaneToTriangleIndices(ImagePlane* image);
+std::vector<triangle> imagePlaneToTriangles(RectGrid* image);
+std::vector<itriangle> imagePlaneToTriangleIndices(RectGrid* image);
 void deflectTriangles(const std::vector<triangle>& triangles_in,std::vector<triangle>& triangles_out,CollectionMassModels* mycollection);
 bool pointInTriangle(point p0,point p1,point p2,point p3);
 double determinant3x3(std::vector<double> row1,std::vector<double> row2,std::vector<double> row3);
